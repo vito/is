@@ -10,6 +10,8 @@ import (
 
 type mockT struct {
 	failed bool
+	helper bool
+	logged []string
 }
 
 func (m *mockT) FailNow() {
@@ -17,6 +19,16 @@ func (m *mockT) FailNow() {
 }
 func (m *mockT) Fail() {
 	m.failed = true
+}
+func (m *mockT) Helper() {
+	m.helper = true
+}
+func (m *mockT) Log(vs ...interface{}) {
+	if len(vs) != 1 {
+		panic(fmt.Sprintf("unexpected: %d != 1", len(vs)))
+	}
+
+	m.logged = append(m.logged, vs[0].(string))
 }
 
 var tests = []struct {
@@ -197,7 +209,6 @@ func testFailures(t *testing.T, colorful bool) {
 		tt := &mockT{}
 		is := New(tt)
 		var buf bytes.Buffer
-		is.out = &buf
 		is.colorful = colorful
 		test.F(is)
 		if len(test.Fail) == 0 && tt.failed {
@@ -215,7 +226,8 @@ func testFailures(t *testing.T, colorful bool) {
 			fmt.Print(buf.String())
 			continue
 		}
-		output := buf.String()
+
+		output := strings.Join(tt.logged, "\n")
 		output = strings.TrimSpace(output)
 		if !strings.HasSuffix(output, test.Fail) {
 			t.Errorf("expected `%s` to end with `%s`", output, test.Fail)
@@ -226,12 +238,10 @@ func testFailures(t *testing.T, colorful bool) {
 func TestRelaxed(t *testing.T) {
 	tt := &mockT{}
 	is := NewRelaxed(tt)
-	var buf bytes.Buffer
-	is.out = &buf
 	is.colorful = false
 	is.NoErr(errors.New("oops"))
 	is.True(1 == 2)
-	actual := buf.String()
+	actual := strings.Join(tt.logged, "\n")
 	if !strings.Contains(actual, `oops`) {
 		t.Errorf("missing: oops")
 	}
@@ -281,10 +291,8 @@ func TestLoadArguments(t *testing.T) {
 func TestFormatStringEscape(t *testing.T) {
 	tt := &mockT{}
 	is := NewRelaxed(tt)
-	var buf bytes.Buffer
-	is.out = &buf
 	is.Equal("20% VAT", "0.2 VAT") // % symbol should be correctly printed
-	actual := buf.String()
+	actual := strings.Join(tt.logged, "\n")
 	if strings.Contains(actual, `%!`) {
 		t.Errorf("string was not escaped correctly: %s", actual)
 	}

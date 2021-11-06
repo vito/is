@@ -41,7 +41,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -59,13 +58,14 @@ type T interface {
 	// aborts the test.
 	// FailNow is called in strict mode (via New).
 	FailNow()
+	Helper()
+	Log(...interface{})
 }
 
 // I is the test helper harness.
 type I struct {
 	t        T
 	fail     func()
-	out      io.Writer
 	colorful bool
 
 	helpers map[string]struct{} // functions to be skipped when writing file/line info
@@ -83,7 +83,7 @@ func init() {
 // In strict mode, failures call T.FailNow causing the test
 // to be aborted. See NewRelaxed for alternative behavior.
 func New(t T) *I {
-	return &I{t, t.FailNow, os.Stdout, !noColorFlag, map[string]struct{}{}}
+	return &I{t, t.FailNow, !noColorFlag, map[string]struct{}{}}
 }
 
 // NewRelaxed makes a new testing helper using the specified
@@ -91,16 +91,18 @@ func New(t T) *I {
 // In relaxed mode, failures call T.Fail allowing
 // multiple failures per test.
 func NewRelaxed(t T) *I {
-	return &I{t, t.Fail, os.Stdout, !noColorFlag, map[string]struct{}{}}
+	return &I{t, t.Fail, !noColorFlag, map[string]struct{}{}}
 }
 
 func (is *I) log(args ...interface{}) {
 	s := is.decorate(fmt.Sprint(args...))
-	fmt.Fprintf(is.out, s)
+	is.t.Helper()
+	is.t.Log(s)
 	is.fail()
 }
 
 func (is *I) logf(format string, args ...interface{}) {
+	is.t.Helper()
 	is.log(fmt.Sprintf(format, args...))
 }
 
@@ -114,6 +116,8 @@ func (is *I) logf(format string, args ...interface{}) {
 // In relaxed mode, execution will continue after a call to
 // Fail, but that test will still fail.
 func (is *I) Fail() {
+	is.t.Helper()
+
 	is.log("failed")
 }
 
@@ -130,6 +134,8 @@ func (is *I) Fail() {
 //
 //	your_test.go:123: not true: val != nil
 func (is *I) True(expression bool) {
+	is.t.Helper()
+
 	if !expression {
 		is.log("not true: $ARGS")
 	}
@@ -150,6 +156,9 @@ func (is *I) Equal(a, b interface{}) {
 	if areEqual(a, b) {
 		return
 	}
+
+	is.t.Helper()
+
 	if isNil(a) || isNil(b) {
 		is.logf("%s != %s", is.valWithType(a), is.valWithType(b))
 	} else if reflect.ValueOf(a).Type() == reflect.ValueOf(b).Type() {
@@ -212,6 +221,8 @@ func (is *I) valWithType(v interface{}) string {
 //
 //	your_test.go:123: err: not found // getVal error
 func (is *I) NoErr(err error) {
+	is.t.Helper()
+
 	if err != nil {
 		is.logf("err: %s", err.Error())
 	}
@@ -334,18 +345,8 @@ func (is *I) decorate(s string) string {
 		file = "???"
 		lineNumber = 1
 	}
-	buf := new(bytes.Buffer)
-	// Every line is indented at least one tab.
-	buf.WriteByte('\t')
-	if is.colorful {
-		buf.WriteString(colorFile)
-	}
-	fmt.Fprintf(buf, "%s:%d: ", file, lineNumber)
-	if is.colorful {
-		buf.WriteString(colorNormal)
-	}
 
-	s = escapeFormatString(s)
+	buf := new(bytes.Buffer)
 
 	lines := strings.Split(s, "\n")
 	if l := len(lines); l > 1 && lines[l-1] == "" {
@@ -369,7 +370,6 @@ func (is *I) decorate(s string) string {
 			buf.WriteString(colorComment)
 		}
 		buf.WriteString(" // ")
-		comment = escapeFormatString(comment)
 		buf.WriteString(comment)
 		if is.colorful {
 			buf.WriteString(colorNormal)
@@ -379,14 +379,8 @@ func (is *I) decorate(s string) string {
 	return buf.String()
 }
 
-// escapeFormatString escapes strings for use in formatted functions like Sprintf.
-func escapeFormatString(fmt string) string {
-	return strings.Replace(fmt, "%", "%%", -1)
-}
-
 const (
 	colorNormal  = "\u001b[39m"
 	colorComment = "\u001b[31m"
-	colorFile    = "\u001b[90m"
 	colorType    = "\u001b[90m"
 )
