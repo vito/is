@@ -1,42 +1,7 @@
-# is [![GoDoc](https://godoc.org/github.com/matryer/is?status.png)](http://godoc.org/github.com/matryer/is) [![Go Report Card](https://goreportcard.com/badge/github.com/matryer/is)](https://goreportcard.com/report/github.com/matryer/is) [![Build Status](https://travis-ci.org/matryer/is.svg?branch=master)](https://travis-ci.org/matryer/is)
-Professional lightweight testing mini-framework for Go.
-
-* Easy to write and read
-* [Beautifully simple API](https://pkg.go.dev/github.com/matryer/is) with everything you need: `is.Equal`, `is.True`, `is.NoErr`, and `is.Fail`
-* Use comments to add descriptions (which show up when tests fail)
-
-Failures are very easy to read:
-
-![Examples of failures](https://github.com/matryer/is/raw/master/misc/delicious-failures.png)
-
-### Usage
-
-The following code shows a range of useful ways you can use
-the helper methods:
-
-```go
-func Test(t *testing.T) {
-
-	is := is.New(t)
-
-	signedin, err := isSignedIn(ctx)
-	is.NoErr(err)            // isSignedIn error
-	is.Equal(signedin, true) // must be signed in
-
-	body := readBody(r)
-	is.True(strings.Contains(body, "Hi there"))
-
-}
-```
-
-## Color
-
-To turn off the colors, run `go test` with the `-nocolor` flag, or with the env var `IS_NO_COLOR=true`.
-
-```
-go test -nocolor
-```
-
-```
-IS_NO_COLOR=true go test
-```
+> This is a fork of [github.com/matryer/is](https://github.com/matryer/is) that
+> prints failures using t.Log instead of printing directly to os.Stderr so that
+> failures are grouped properly with sub-test headers in `go test` output.
+>
+> Happy to submit this as a PR, just maintaining a fork for now since I'm not
+> sure it'd even be of interest, and the API is tiny enough that I'm not
+> worried about maintaining it.

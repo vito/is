@@ -7,7 +7,7 @@ package example
 import (
 	"testing"
 
-	"github.com/matryer/is"
+	"github.com/vito/is"
 )
 
 func TestSomething(t *testing.T) {

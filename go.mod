@@ -1,3 +1,3 @@
-module github.com/matryer/is
+module github.com/vito/is
 
 go 1.14
