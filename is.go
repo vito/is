@@ -45,6 +45,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // T reports when failures occur.
@@ -165,6 +166,70 @@ func (is *I) Equal(a, b interface{}) {
 		is.logf("%v != %v", a, b)
 	} else {
 		is.logf("%s != %s", is.valWithType(a), is.valWithType(b))
+	}
+}
+
+// Eventually asserts that given condition will be met in waitFor time,
+// periodically checking target function each tick.
+//
+//    is.Eventually(func() bool { return true; }, time.Second, 10*time.Millisecond)
+func (is *I) Eventually(condition func() bool, waitFor time.Duration, tick time.Duration) {
+	is.t.Helper()
+
+	ch := make(chan bool, 1)
+
+	timer := time.NewTimer(waitFor)
+	defer timer.Stop()
+
+	ticker := time.NewTicker(tick)
+	defer ticker.Stop()
+
+	for tick := ticker.C; ; {
+		select {
+		case <-timer.C:
+			is.Fail()
+			return
+		case <-tick:
+			tick = nil
+			go func() { ch <- condition() }()
+		case v := <-ch:
+			if v {
+				return
+			}
+			tick = ticker.C
+		}
+	}
+}
+
+// Never asserts that the given condition doesn't satisfy in waitFor time,
+// periodically checking the target function each tick.
+//
+//    assert.Never(t, func() bool { return false; }, time.Second, 10*time.Millisecond)
+func (is *I) Never(condition func() bool, waitFor time.Duration, tick time.Duration) {
+	is.t.Helper()
+
+	ch := make(chan bool, 1)
+
+	timer := time.NewTimer(waitFor)
+	defer timer.Stop()
+
+	ticker := time.NewTicker(tick)
+	defer ticker.Stop()
+
+	for tick := ticker.C; ; {
+		select {
+		case <-timer.C:
+			return
+		case <-tick:
+			tick = nil
+			go func() { ch <- condition() }()
+		case v := <-ch:
+			if v {
+				is.Fail()
+				return
+			}
+			tick = ticker.C
+		}
 	}
 }
 
