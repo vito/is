@@ -187,45 +187,13 @@ func (is *I) Eventually(condition func() bool, waitFor time.Duration, tick time.
 	for tick := ticker.C; ; {
 		select {
 		case <-timer.C:
-			is.Fail()
+			is.logf("check did not succeed within %s", waitFor)
 			return
 		case <-tick:
 			tick = nil
 			go func() { ch <- condition() }()
 		case v := <-ch:
 			if v {
-				return
-			}
-			tick = ticker.C
-		}
-	}
-}
-
-// Never asserts that the given condition doesn't satisfy in waitFor time,
-// periodically checking the target function each tick.
-//
-//    assert.Never(t, func() bool { return false; }, time.Second, 10*time.Millisecond)
-func (is *I) Never(condition func() bool, waitFor time.Duration, tick time.Duration) {
-	is.t.Helper()
-
-	ch := make(chan bool, 1)
-
-	timer := time.NewTimer(waitFor)
-	defer timer.Stop()
-
-	ticker := time.NewTicker(tick)
-	defer ticker.Stop()
-
-	for tick := ticker.C; ; {
-		select {
-		case <-timer.C:
-			return
-		case <-tick:
-			tick = nil
-			go func() { ch <- condition() }()
-		case v := <-ch:
-			if v {
-				is.Fail()
 				return
 			}
 			tick = ticker.C
