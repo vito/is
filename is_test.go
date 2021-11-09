@@ -30,6 +30,9 @@ func (m *mockT) Log(vs ...interface{}) {
 
 	m.logged = append(m.logged, vs[0].(string))
 }
+func (m *mockT) Logf(s string, vs ...interface{}) {
+	m.logged = append(m.logged, fmt.Sprintf(s, vs...))
+}
 
 var tests = []struct {
 	N    string
@@ -229,8 +232,8 @@ func testFailures(t *testing.T, colorful bool) {
 
 		output := strings.Join(tt.logged, "\n")
 		output = strings.TrimSpace(output)
-		if !strings.HasSuffix(output, test.Fail) {
-			t.Errorf("expected `%s` to end with `%s`", output, test.Fail)
+		if !strings.Contains(output, test.Fail) {
+			t.Errorf("expected `%s` to contain `%s`", output, test.Fail)
 		}
 	}
 }
