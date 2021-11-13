@@ -46,8 +46,6 @@ import (
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 // T reports when failures occur.
@@ -63,7 +61,6 @@ type T interface {
 	FailNow()
 	Helper()
 	Log(...interface{})
-	Logf(string, ...interface{})
 }
 
 // I is the test helper harness.
@@ -157,16 +154,11 @@ func (is *I) True(expression bool) {
 //
 //	your_test.go:123: Hey Mat != Hi Mat // greeting
 func (is *I) Equal(a, b interface{}) {
-	if cmp.Equal(a, b) {
+	if areEqual(a, b) {
 		return
 	}
 
 	is.t.Helper()
-
-	diff := cmp.Diff(a, b)
-	if diff != "" {
-		defer is.t.Logf("diff:\n%s", diff)
-	}
 
 	if isNil(a) || isNil(b) {
 		is.logf("%s != %s", is.valWithType(a), is.valWithType(b))
